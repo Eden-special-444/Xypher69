@@ -5,7 +5,7 @@ module.exports = {
     name: "fun",
     aliases: ["fun"],
     version: "2.0",
-    author: "kshitiz",
+    author: "kshItiz",
     countDown: 20,
     role: 0,
     shortDescription: "",
