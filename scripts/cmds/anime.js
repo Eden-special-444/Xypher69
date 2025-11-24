@@ -4,7 +4,7 @@ module.exports = {
   config: {
     name: "anime",
     aliases: ["a9ime", "video"],
-    author: "Azad 💥", //author change korle tor marechudi 
+    author: "Azadx69x", //author change korle tor marechudi 
     version: "1.7",
     category: "media",
     guide: { en: "{p}{n} (optional: 'random')" },
