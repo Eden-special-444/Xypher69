@@ -1,50 +1,63 @@
 const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
 
 module.exports = {
-config: {
-name: "edit",
-version: "1.0",
-author: "Rifat | nxo_here",
-countDown: 5,
-role: 0,
-shortDescription: { en: "Edit image using prompt" },
-longDescription: { en: "Edit an uploaded image based on your prompt." },
-category: "image",
-guide: { en: "{p}edit [prompt] (reply to image)" }
-},
+  config: {
+    name: "edit",
+    aliases: ["imgedit"],
+    version: "2.4",
+    author: "Neoaz ゐ", //API by RIFAT
+    countDown: 15,
+    role: 0,
+    shortDescription: { en: "Edit image with Seedream V4" },
+    longDescription: { en: "Edit or modify an existing image using Seedream V4 Edit AI model" },
+    category: "image",
+    guide: {
+      en: "Reply to an image with: {pn} <prompt>"
+    }
+  },
 
-onStart: async function ({ api, event, args, message }) {
-const prompt = args.join(" ");
-const repliedImage = event.messageReply?.attachments?.[0];
+  onStart: async function ({ message, event, api, args }) {
+    const hasPhotoReply = event.type === "message_reply" && event.messageReply?.attachments?.[0]?.type === "photo";
 
-if (!prompt || !repliedImage || repliedImage.type !== "photo") {
-return message.reply("⚠️ | Please reply to a photo with your prompt to edit it.");
-}
+    if (!hasPhotoReply) {
+      return message.reply("Please reply to an image to edit.");
+    }
 
-const imgPath = path.join(__dirname, "cache", `${Date.now()}_edit.jpg`);
-const waitMsg = await message.reply(`🧪 Editing image for: "${prompt}"...\nPlease wait...`);
+    const prompt = args.join(" ").trim();
+    if (!prompt) {
+      return message.reply("Please provide a prompt.");
+    }
 
-try {
-const imgURL = repliedImage.url;
-const imageUrl = `https://edit-and-gen.onrender.com/gen?prompt=${encodeURIComponent(prompt)}&image=${encodeURIComponent(imgURL)}`;
-const res = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    const model = "seedream v4 edit";
+    const imageUrl = event.messageReply.attachments[0].url;
 
-await fs.ensureDir(path.dirname(imgPath));
-await fs.writeFile(imgPath, Buffer.from(res.data, "binary"));
+    try {
+      api.setMessageReaction("⏳", event.messageID, () => {}, true);
 
-await message.reply({
-body: `✅ | Edited image for: "${prompt}"`,
-attachment: fs.createReadStream(imgPath)
-});
+      const res = await axios.get("https://fluxcdibai-1.onrender.com/generate", {
+        params: { prompt, model, imageUrl },
+        timeout: 120000
+      });
 
-} catch (err) {
-console.error("EDIT Error:", err);
-message.reply("❌ | Failed to edit image. Please try again later.");
-} finally {
-await fs.remove(imgPath);
-api.unsendMessage(waitMsg.messageID);
-}
-}
+      const data = res.data;
+      const resultUrl = data?.data?.imageResponseVo?.url;
+
+      if (!resultUrl) {
+        api.setMessageReaction("❌", event.messageID, () => {}, true);
+        return message.reply("Failed to edit image.");
+      }
+
+      api.setMessageReaction("✅", event.messageID, () => {}, true);
+
+      await message.reply({
+        body: "Image edited 🐦",
+        attachment: await global.utils.getStreamFromURL(resultUrl)
+      });
+
+    } catch (err) {
+      console.error(err);
+      api.setMessageReaction("❌", event.messageID, () => {}, true);
+      return message.reply("Error while editing image.");
+    }
+  }
 };
